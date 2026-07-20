@@ -1,50 +1,37 @@
+from pathlib import Path
 import pandas as pd
 import yaml
 
+# Project root (clinical-trial-challenge/)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-def load_config(path: str = "config/settings.yaml") -> dict:
+
+def load_config(config_path=None):
     """
-    Load project configuration from a YAML file.
-
-    Args:
-        path: Path to the configuration file.
-
-    Returns:
-        Dictionary containing the project configuration.
-
-    Raises:
-        FileNotFoundError: If the configuration file cannot be found.
-        yaml.YAMLError: If the YAML file contains invalid syntax.
+    Load project configuration from the YAML file.
     """
+    if config_path is None:
+        config_path = PROJECT_ROOT / "config" / "settings.yaml"
+
     try:
-        with open(path, "r") as file:
+        with open(config_path, "r") as file:
             return yaml.safe_load(file)
     except FileNotFoundError:
-        raise FileNotFoundError(f"Configuration file not found: {path}")
+        raise FileNotFoundError(f"Configuration file not found: {config_path}")
     except yaml.YAMLError as e:
         raise yaml.YAMLError(f"Invalid YAML in configuration file: {e}")
 
 
-def extract_csv(path: str) -> pd.DataFrame:
+def extract_csv(path):
     """
-    Read the raw clinical trials CSV into a pandas DataFrame.
-
-    Args:
-        path: Path to the raw CSV file.
-
-    Returns:
-        DataFrame containing the raw clinical trial data.
-
-    Raises:
-        FileNotFoundError: If the CSV file cannot be found.
-        pd.errors.ParserError: If the CSV file cannot be parsed.
+    Extract clinical trial data from a CSV file.
     """
+    csv_path = PROJECT_ROOT / path
+
     try:
-        return pd.read_csv(path)
+        return pd.read_csv(csv_path)
     except FileNotFoundError:
-        raise FileNotFoundError(f"CSV file not found: {path}")
-    except pd.errors.ParserError as e:
-        raise pd.errors.ParserError(f"Error parsing CSV file: {e}")
+        raise FileNotFoundError(f"CSV file not found: {csv_path}")
 
 
 if __name__ == "__main__":
