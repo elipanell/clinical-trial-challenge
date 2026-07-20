@@ -216,3 +216,33 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+ # ==========================
+# Project-specific ignores
+# ==========================
+
+# Virtual environment
+venv/
+.venv/
+
+# Raw data (not version controlled)
+data/raw/*
+!data/raw/.gitkeep
+
+# Processed/generated data
+data/processed/*
+!data/processed/.gitkeep
+
+# Local configuration overrides
+config/settings.local.yaml
+
+# Logs
+logs/
+*.log
+
+# Generated reports
+reports/
+
+# OS files
+.DS_Store
