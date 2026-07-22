@@ -102,3 +102,7 @@ The current tests validate:
 - Nullable field handling
 - Required column validation
 - End-to-end transformation behaviour
+
+
+
+The ETL application container mounts ./data at runtime rather than embedding datasets into the image. This keeps the image lightweight and separates application code from input data.
