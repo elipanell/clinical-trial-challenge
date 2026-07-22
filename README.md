@@ -6,6 +6,8 @@ This project implements an end-to-end ETL pipeline for clinical trial data using
 
 The implementation focuses on producing a modular, reproducible, and production-inspired pipeline while handling common real-world data quality issues such as duplicate records, missing values, inconsistent formats, and redacted data.
 
+For the scope of this challenge, ingestion was implemented for CSV data only. The pipeline was intentionally designed with modular Extract, Transform and Load components to allow additional sources such as REST APIs or SQL databases to be incorporated in future.
+
 ---
 
 # Current Functionality
@@ -14,7 +16,7 @@ The project currently includes:
 
 * Configuration-driven CSV ingestion
 * Modular Extract → Transform → Load pipeline
-* PostgreSQL database
+* PostgreSQL relational database
 * Docker Compose deployment
 * SQLAlchemy database loading
 * Automated data validation
@@ -122,9 +124,9 @@ The transformation pipeline:
 
 # Database Design
 
-The project uses PostgreSQL running inside Docker.
+The project uses PostgreSQL running in a Docker container.
 
-The database schema currently consists of a single `studies` table designed for analytical querying.
+The current MVP database schema consists of a single `studies` table designed for analytical querying.
 
 The schema includes:
 
@@ -160,9 +162,12 @@ The ETL container mounts the local `data/` directory at runtime rather than embe
 
 # Running the Pipeline
 
+Ensure Docker and Docker Compose are installed before running the project.
+
 ### 1. Configure environment variables
 
 Create a local `.env` file containing the PostgreSQL connection settings.
+An example configuration is provided in `.env.example`.
 
 ### 2. Start the application
 
@@ -170,12 +175,12 @@ Create a local `.env` file containing the PostgreSQL connection settings.
 docker compose up --build
 ```
 
-This automatically:
+Running the command will automatically:
 
-* Creates the PostgreSQL database
-* Executes `sql/schema.sql`
-* Runs the ETL pipeline
-* Loads the transformed dataset into PostgreSQL
+* Create the PostgreSQL database
+* Execute `sql/schema.sql`
+* Run the ETL pipeline
+* Load the transformed dataset into PostgreSQL
 
 ---
 
@@ -252,6 +257,7 @@ The queries answer questions such as:
 * Intervention completion rates
 * Trial status distribution
 * Timeline analysis
+* Geographic distribution (not possible with the available dataset due to the absence of location information)
 
 ---
 
@@ -264,7 +270,7 @@ Approximate effort:
 - ETL implementation (Extract, Transform, Load): ~90 minutes
 - Database schema design and analytical SQL queries: ~30 minutes
 - Testing and validation: ~30 minutes
-- Investigation of relational modelling and normalization approach (not implemented after data profiling identified ambiguous source formatting): ~60 minutes
+- Investigation of relational modelling and normalization feasibility (ultimately not implemented after data profiling identified ambiguous source formatting): ~60 minutes
 - Documentation and final refinement: ~45 minutes
 
 **Total:** approximately **5.5 hours**.
@@ -278,7 +284,31 @@ Potential production enhancements include:
 * Support for additional data sources (REST APIs and databases)
 * Incremental loading instead of full refreshes
 * Additional normalization once reliable domain rules are available
+* Database partitioning and query optimization for larger datasets
 * Structured logging and monitoring
 * Data lineage and audit logging
 * CI/CD pipeline with automated testing and deployment
-* Partitioning and performance tuning for larger datasets
+
+---
+
+## Bonus Discussion
+
+### Security
+
+In production, sensitive data would be protected using role-based access control (RBAC), encrypted database connections, secret management for credentials, and audit logging to restrict and monitor access.
+
+### Data Quality
+
+Production data quality would be managed through automated validation rules, schema enforcement, completeness checks, duplicate detection, and monitoring dashboards to identify anomalies during ingestion.
+
+### Scalability
+
+For larger datasets, the pipeline could support incremental loading, table partitioning, parallel processing, and orchestration using workflow tools such as Airflow.
+
+### Cloud Deployment
+
+A production deployment could utilise cloud-managed PostgreSQL, object storage for raw data, container orchestration (e.g. Kubernetes or ECS), and CI/CD pipelines for automated deployment.
+
+### AI Assistance
+
+AI was used to assist with brainstorming, documentation refinement, and code review. All implementation, debugging, testing, and validation were completed and verified manually before submission.
