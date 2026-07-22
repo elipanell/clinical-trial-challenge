@@ -32,3 +32,15 @@ CREATE TABLE IF NOT EXISTS studies (
     is_withheld BOOLEAN NOT NULL
 
 );
+
+CREATE INDEX idx_studies_overall_status
+ON studies(overall_status);
+
+CREATE INDEX idx_studies_start_date
+ON studies(start_date);
+
+CREATE INDEX idx_studies_study_type_phase
+ON studies(study_type, phases);
+
+CREATE INDEX idx_studies_organization
+ON studies(organization_full_name);

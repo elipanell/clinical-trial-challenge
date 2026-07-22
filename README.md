@@ -1,108 +1,284 @@
 # Clinical Trial Challenge
 
-Data pipeline for a life sciences consultancy use case.
-
 ## Project Overview
 
-This project builds a data pipeline to ingest, validate, transform, and analyze clinical trial data.
+This project implements an end-to-end ETL pipeline for clinical trial data using Python, PostgreSQL, Docker, and SQLAlchemy. The pipeline ingests raw clinical trial data, validates and transforms it, loads it into a relational database, and supports analytical SQL queries for reporting.
 
-## Current Status
+The implementation focuses on producing a modular, reproducible, and production-inspired pipeline while handling common real-world data quality issues such as duplicate records, missing values, inconsistent formats, and redacted data.
 
-Current MVP functionality includes:
+---
 
-- CSV extraction driven by configuration
-- Data validation and transformation pipeline
-- PostgreSQL schema for storing clinical trial data
-- Data loading into PostgreSQL using SQLAlchemy
-- Automated unit tests for the transformation pipeline
+# Current Functionality
 
-## Project Structure
+The project currently includes:
 
+* Configuration-driven CSV ingestion
+* Modular Extract → Transform → Load pipeline
+* PostgreSQL database
+* Docker Compose deployment
+* SQLAlchemy database loading
+* Automated data validation
+* Duplicate detection and removal
+* Preservation of withheld (redacted) studies
+* Surrogate primary key generation
+* Automated unit tests
+* Analytical SQL queries
 
+---
+
+# Project Structure
+
+```text
 clinical-trial-challenge/
-├── config/ # Pipeline configuration
-├── data/ # Raw and processed data locations
-├── notebooks/ # Data exploration and profiling notebooks
-├── sql/ # Database schemas
-├── src/ # Pipeline source code
-└── tests/ # Test suite
+├── config/         # Pipeline configuration
+├── data/           # Raw datasets
+├── notebooks/      # Data profiling and exploration
+├── sql/            # Database schema and analytics queries
+├── src/            # ETL source code
+└── tests/          # Automated tests
+```
 
-## Dependency Management
+---
 
-Chose Python's built-in `venv` and `requirements.txt` over Poetry/Conda to keep the project simple, reproducible, and Docker-friendly for the scope of this challenge.
+# Architecture
 
-### Extract
+```text
+                 config/settings.yaml
+                          │
+                          ▼
+                +-------------------+
+                |     Extract       |
+                |-------------------|
+                | Read CSV dataset  |
+                +-------------------+
+                          │
+                          ▼
+                +-------------------+
+                |    Transform      |
+                |-------------------|
+                | Validate columns  |
+                | Clean data        |
+                | Remove duplicates |
+                | Preserve withheld |
+                | Cast data types   |
+                | Generate study_id |
+                +-------------------+
+                          │
+                          ▼
+                +-------------------+
+                |       Load        |
+                |-------------------|
+                | SQLAlchemy        |
+                | PostgreSQL        |
+                +-------------------+
+                          │
+                          ▼
+                  PostgreSQL Database
+                          │
+                          ▼
+                      studies table
+```
 
-- Reads pipeline configuration from `config/settings.yaml`
-- Loads the raw clinical trial CSV into a pandas DataFrame
+---
 
-### Transform
+# Dependency Management
 
-The transformation pipeline performs the following steps:
+The project uses Python's built-in `venv` together with `requirements.txt`.
 
-- Validates required input columns
-- Removes CSV index columns created during export
-- Casts columns to appropriate data types
-- Separates withheld (`[Redacted]`) studies from non-withheld studies
-- Removes duplicate non-withheld studies
-- Preserves all withheld studies
-- Adds an `is_withheld` flag
-- Renames columns to match the PostgreSQL schema
-- Validates the transformed output before loading
+This approach keeps the project lightweight, reproducible, Docker-friendly, and appropriate for the scope of the challenge.
 
-### Load
+---
 
-- Loads the transformed dataset into PostgreSQL using SQLAlchemy
-- Reads database configuration from a local `.env` file
-- Appends records into the `studies` table
-- Validates against an existing SQL schema
+# ETL Pipeline
 
-## Database
+## Extract
 
-The project uses PostgreSQL running locally in a Docker container.
+* Reads pipeline configuration from `config/settings.yaml`
+* Loads the selected clinical trial CSV dataset into a pandas DataFrame
 
-The database schema is defined in `sql/schema.sql` and includes:
+## Transform
 
-- Auto-generated primary key (`study_id`)
-- Typed columns for clinical trial attributes
-- Boolean flag identifying withheld studies (`is_withheld`)
+The transformation pipeline:
 
-The application connects to PostgreSQL using SQLAlchemy and environment variables stored in a local .env file.
+* Validates required input columns
+* Removes CSV export index columns
+* Casts columns to appropriate data types
+* Separates withheld (`[Redacted]`) studies from non-withheld studies
+* Removes duplicate non-withheld studies
+* Preserves all withheld studies
+* Adds an `is_withheld` flag
+* Renames columns to match the database schema
+* Generates a surrogate primary key (`study_id`)
+* Validates the transformed dataset before loading
 
-## Running the Pipeline
-1. Start PostgreSQL
+## Load
 
-Start a PostgreSQL Docker container.
+* Connects to PostgreSQL using SQLAlchemy
+* Reads connection settings from `.env`
+* Loads transformed data into PostgreSQL
+* Validates against the predefined database schema
 
-2. Create the database schema
+---
 
-Execute the SQL schema contained in:
+# Database Design
 
-sql/schema.sql
-3. Configure environment variables
+The project uses PostgreSQL running inside Docker.
 
-Create a local .env file containing the PostgreSQL connection settings.
+The database schema currently consists of a single `studies` table designed for analytical querying.
 
-4. Run the pipeline
-python -m src.load
+The schema includes:
 
-This executes the complete ETL workflow:
+* Surrogate primary key (`study_id`)
+* Typed clinical trial attributes
+* Boolean flag identifying withheld studies (`is_withheld`)
 
-Extract → Transform → Load
-Testing
+A surrogate primary key was chosen because the source dataset does not contain a reliable natural identifier. Study titles, organizations, and other attributes cannot uniquely identify every study, particularly for withheld records where many fields have been redacted.
+
+---
+
+## Indexing Strategy
+
+To support the expected analytical workload, indexes were added to columns frequently used in filtering and grouping operations, including study_type, phases, overall_status, start_date, and organization_full_name.
+
+Index performance was validated using PostgreSQL's EXPLAIN ANALYZE. Selective queries filtering by study_type and phases used an Index Only Scan, while full-table aggregation queries appropriately used a Sequential Scan, demonstrating PostgreSQL's cost-based query planner selecting the most efficient execution strategy.
+
+
+# Docker
+
+The application is fully containerized using Docker Compose.
+
+Two services are orchestrated:
+
+* PostgreSQL database
+* Python ETL application
+
+The database initializes automatically using `sql/schema.sql`, after which the ETL container executes the complete pipeline.
+
+The ETL container mounts the local `data/` directory at runtime rather than embedding datasets inside the Docker image. This keeps the image lightweight, separates application code from input data, and allows datasets to be updated without rebuilding the image.
+
+---
+
+# Running the Pipeline
+
+### 1. Configure environment variables
+
+Create a local `.env` file containing the PostgreSQL connection settings.
+
+### 2. Start the application
+
+```bash
+docker compose up --build
+```
+
+This automatically:
+
+* Creates the PostgreSQL database
+* Executes `sql/schema.sql`
+* Runs the ETL pipeline
+* Loads the transformed dataset into PostgreSQL
+
+---
+
+# Testing
 
 Run the automated test suite with:
 
+```bash
 pytest
+```
 
-The current tests validate:
+Current test coverage includes:
 
-- Duplicate study removal
-- Withheld study handling
-- Nullable field handling
-- Required column validation
-- End-to-end transformation behaviour
+* Duplicate study removal
+* Preservation of withheld studies
+* Nullable field handling
+* Required column validation
+* Data type conversion
+* Surrogate key generation
+* End-to-end transformation behaviour
 
+---
 
+# Data Quality Decisions
 
-The ETL application container mounts ./data at runtime rather than embedding datasets into the image. This keeps the image lightweight and separates application code from input data.
+Several real-world data quality issues were identified during exploratory analysis, including:
+
+* Duplicate studies
+* Missing values
+* Mixed date formats
+* Nullable clinical attributes
+* Redacted organisations
+
+A key design decision was preserving every withheld (`[Redacted]`) study.
+
+Although many withheld records appear identical after redaction, there is no evidence that they represent duplicate studies. Removing them could incorrectly discard legitimate clinical trials. Instead, duplicates are removed only for non-withheld studies while all withheld records are retained and explicitly flagged using `is_withheld`.
+
+---
+
+# Design Decisions and Limitations
+
+The challenge encouraged consideration of relational modelling.
+
+The `Conditions` column was investigated for normalization. During data profiling, it was found that the dataset stores multiple medical concepts within a single free-text field where commas are used both:
+
+* as separators between conditions
+* within individual medical terminology
+
+Examples include:
+
+* `Kidney Failure, Chronic`
+* `Arthroplasty, Replacement, Knee`
+
+Because no reliable delimiter exists, automatic normalization would incorrectly split valid medical terms into separate conditions.
+
+To preserve data integrity, the project intentionally retains the original representation supplied by the source dataset rather than introducing potentially incorrect normalized records.
+
+This reflects a deliberate engineering trade-off that prioritizes data integrity over aggressive normalization when the source data is ambiguous.
+
+---
+
+# Analytics
+
+Example analytical SQL queries are provided in:
+
+```text
+sql/analytics_queries.sql
+```
+
+The queries answer questions such as:
+
+* Trials by study type and phase
+* Most common conditions
+* Intervention completion rates
+* Trial status distribution
+* Timeline analysis
+
+---
+
+# Time Allocation
+
+Approximate effort:
+
+- Project setup, Python environment and Docker configuration: ~45 minutes
+- Exploratory data analysis and data profiling: ~45 minutes
+- ETL implementation (Extract, Transform, Load): ~90 minutes
+- Database schema design and analytical SQL queries: ~30 minutes
+- Testing and validation: ~30 minutes
+- Investigation of relational modelling and normalization approach (not implemented after data profiling identified ambiguous source formatting): ~60 minutes
+- Documentation and final refinement: ~45 minutes
+
+**Total:** approximately **5.5 hours**.
+
+---
+
+# Future Improvements
+
+Potential production enhancements include:
+
+* Support for additional data sources (REST APIs and databases)
+* Incremental loading instead of full refreshes
+* Additional normalization once reliable domain rules are available
+* Structured logging and monitoring
+* Data lineage and audit logging
+* CI/CD pipeline with automated testing and deployment
+* Partitioning and performance tuning for larger datasets
