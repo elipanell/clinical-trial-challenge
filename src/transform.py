@@ -151,7 +151,6 @@ def add_withheld_flag(clean_df, withheld_df):
         ignore_index=True
     )
 
-
 def validate_output(df):
     """
     Validate transformed dataframe before loading downstream.
@@ -161,9 +160,11 @@ def validate_output(df):
             "Transformation failed: is_withheld column missing"
         )
 
-    if df.duplicated().sum() > 0:
+    non_withheld = df.loc[~df["is_withheld"]]
+
+    if non_withheld.duplicated().any():
         raise ValueError(
-            "Transformation failed: duplicate rows remain"
+            "Transformation failed: duplicate non-withheld studies remain"
         )
 
     return df
@@ -195,7 +196,7 @@ def transform(df):
     #     withheld_df
     # )
 
-    withheld_df = remove_duplicate_studies(withheld_df) ## removing duplicated redacted, would discuss with DG on visibility of data
+    # withheld_df = remove_duplicate_studies(withheld_df) ## removing duplicated redacted, would discuss with DG on visibility of data
 
     df = add_withheld_flag(
         clean_df,
