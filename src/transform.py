@@ -27,6 +27,24 @@ STRING_COLUMNS = [
     "Medical Subject Headings",
 ]
 
+COLUMN_MAPPING = {
+    "Organization Full Name": "organization_full_name",
+    "Organization Class": "organization_class",
+    "Responsible Party": "responsible_party",
+    "Brief Title": "brief_title",
+    "Full Title": "full_title",
+    "Overall Status": "overall_status",
+    "Start Date": "start_date",
+    "Standard Age": "standard_age",
+    "Conditions": "conditions",
+    "Primary Purpose": "primary_purpose",
+    "Interventions": "interventions",
+    "Intervention Description": "intervention_description",
+    "Study Type": "study_type",
+    "Phases": "phases",
+    "Outcome Measure": "outcome_measure",
+    "Medical Subject Headings": "medical_subject_headings",
+}
 
 def validate_columns(df):
     """
@@ -150,6 +168,11 @@ def validate_output(df):
 
     return df
 
+def rename_columns(df):
+    """
+    Rename columns to match the PostgreSQL schema.
+    """
+    return df.rename(columns=COLUMN_MAPPING)
 
 def transform(df):
     """
@@ -172,12 +195,14 @@ def transform(df):
     #     withheld_df
     # )
 
-    withheld_df = remove_duplicate_studies(withheld_df) ## removing duplicated redacted, would discuss with DG on visibility of data/user
+    withheld_df = remove_duplicate_studies(withheld_df) ## removing duplicated redacted, would discuss with DG on visibility of data
 
     df = add_withheld_flag(
         clean_df,
         withheld_df
     )
+
+    df = rename_columns(df)
 
     df = validate_output(df)
 
